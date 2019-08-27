@@ -76,6 +76,10 @@ void _rar_entry_to_zval(zval *parent,
 #endif
 
 	object_init_ex(object, rar_class_entry_ptr);
+#if PHP_VERSION_ID >= 70300
+    object_properties_init(Z_OBJ_P(object), rar_class_entry_ptr);
+#endif
+
 	zend_update_property(rar_class_entry_ptr, object, "rarfile",
 		sizeof("rararch") - 1, parent_copy TSRMLS_CC);
 

@@ -51,7 +51,7 @@
 extern zend_module_entry rar_module_entry;
 #define phpext_rar_ptr &rar_module_entry
 
-#define PHP_RAR_VERSION "4.0.0"
+#define PHP_RAR_VERSION "4.0.6"
 
 #ifdef PHP_WIN32
 #define PHP_RAR_API __declspec(dllexport)
@@ -144,6 +144,18 @@ typedef int zpp_s_size_t;
 #define zend_hash_str_del zend_hash_del
 #endif
 
+#if PHP_VERSION_ID < 70300
+
+#if defined(HAVE_ST_BLKSIZE) && !defined(HAVE_STRUCT_STAT_ST_BLKSIZE)
+#define HAVE_STRUCT_STAT_ST_BLKSIZE HAVE_ST_BLKSIZE
+#endif
+
+#if defined(HAVE_ST_RDEV) && !defined(HAVE_STRUCT_STAT_ST_RDEV)
+#define HAVE_STRUCT_STAT_ST_RDEV HAVE_ST_RDEV
+#endif
+
+#endif
+
 typedef struct _rar_cb_user_data {
 	char					*password;	/* can be NULL */
 	zval					*callable;  /* can be NULL */
@@ -208,7 +220,14 @@ ZEND_END_MODULE_GLOBALS(rar)
 ZEND_EXTERN_MODULE_GLOBALS(rar);
 
 #ifdef ZTS
+#if defined(COMPILE_DL_RAR)
+ZEND_TSRMLS_CACHE_EXTERN();
+#endif
+#if PHP_MAJOR_VERSION == 5
 # define RAR_G(v) TSRMG(rar_globals_id, zend_rar_globals *, v)
+#else
+# define RAR_G(v) ZEND_TSRMG(rar_globals_id, zend_rar_globals *, v)
+#endif
 #else
 # define RAR_G(v) (rar_globals.v)
 #endif

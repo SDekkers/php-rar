@@ -62,11 +62,9 @@ bool(false)
 Warning: RarArchive::isBroken(): Volume %smulti_broken.part2.rar was not found in %s on line %d
 bool(true)
 
-* broken file; as first call; don't allow broken; kill warning
-bool(true)
+* broken file; as first call; don't allow broken; kill warning%Abool(true)
 
-* broken file; as first call; don't allow broken; kill warning; non OOP
-bool(true)
+* broken file; as first call; don't allow broken; kill warning; non OOP%Abool(true)
 
 * broken file; as second call; don't allow broken
 

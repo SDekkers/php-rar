@@ -65,7 +65,7 @@ bool(false)
 Given callback that takes more arguments:
 
 Warning: strpos() expects at least %d parameters, 1 given in %s on line %d
-
+%A
 Warning: RarArchive::getEntries(): ERAR_EOPEN (file open error) in %s on line %d
 
 Given callback that takes another kind of arguments:

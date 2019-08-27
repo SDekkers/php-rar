@@ -50,7 +50,7 @@ Warning: RarArchive::setAllowBroken() expects exactly 1 parameter, 0 given in %s
 Warning: rar_allow_broken_set() expects exactly 2 parameters, 1 given in %s on line %d
 
 * broken file; do not allow broken (default)
-
+%A
 Warning: RarArchive::getEntries(): ERAR_EOPEN (file open error) in %s on line %d
 bool(false)
 
@@ -58,18 +58,18 @@ Warning: %s(): ERAR_EOPEN (file open error) in %s on line %d
 int(0)
 
 * broken file; do not allow broken (explicit)
-
+%A
 Warning: RarArchive::getEntries(): ERAR_EOPEN (file open error) in %s on line %d
 bool(false)
 
 Warning: %s(): ERAR_EOPEN (file open error) in %s on line %d
 int(0)
 
-* broken file; allow broken
+* broken file; allow broken%A
 RarEntry for file "file1.txt" (52b28202)
 int(1)
 
-* broken file; allow broken; non OOP
+* broken file; allow broken; non OOP%A
 RarEntry for file "file1.txt" (52b28202)
 int(1)
 

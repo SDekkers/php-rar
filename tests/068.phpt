@@ -11,4 +11,4 @@ new RarArchive();
 
 echo "Done\n";
 --EXPECTF--
-Fatal error: Call to private RarArchive::__construct() from invalid context in %s on line %d
+Fatal error:%sCall to private RarArchive::__construct() from invalid context in %s

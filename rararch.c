@@ -67,6 +67,37 @@ static zend_class_entry *rararch_ce_ptr;
 static zend_object_handlers rararch_object_handlers;
 /* }}} */
 
+
+/* {{{ Iteration Prototypes */
+static zend_object_iterator *rararch_it_get_iterator(zend_class_entry *ce,
+                                                     zval *object,
+                                                     int by_ref TSRMLS_DC);
+/* static void rararch_it_delete_cache(zend_object_iterator *iter TSRMLS_DC); */
+static void rararch_it_dtor(zend_object_iterator *iter TSRMLS_DC);
+static void rararch_it_fetch(rararch_iterator *it TSRMLS_DC);
+static int rararch_it_valid(zend_object_iterator *iter TSRMLS_DC);
+#if PHP_MAJOR_VERSION < 7
+static void rararch_it_current_data(zend_object_iterator *iter, zval ***data TSRMLS_DC);
+#else
+static zval* rararch_it_current_data(zend_object_iterator *iter);
+#endif
+static void rararch_it_move_forward(zend_object_iterator *iter TSRMLS_DC);
+static void rararch_it_rewind(zend_object_iterator *iter TSRMLS_DC);
+static void rararch_it_invalidate_current(zend_object_iterator *iter TSRMLS_DC);
+/* }}} */
+
+/* iterator handler table */
+static zend_object_iterator_funcs rararch_it_funcs = {
+        rararch_it_dtor,
+        rararch_it_valid,
+        rararch_it_current_data,
+        NULL,
+        rararch_it_move_forward,
+        rararch_it_rewind,
+        rararch_it_invalidate_current
+};
+/* }}} */
+
 /* {{{ Helper macros */
 #define RAR_THIS_OR_NO_ARGS(file) \
 	if (file == NULL) { \
@@ -914,22 +945,58 @@ static zend_function_entry php_rararch_class_functions[] = {
 
 /* {{{ Iteration. Very boring stuff indeed. */
 
-/* {{{ Iteration Prototypes */
+
+/* {{{ rararch_it_get_iterator */
 static zend_object_iterator *rararch_it_get_iterator(zend_class_entry *ce,
 													 zval *object,
-													 int by_ref TSRMLS_DC);
-/* static void rararch_it_delete_cache(zend_object_iterator *iter TSRMLS_DC); */
-static void rararch_it_dtor(zend_object_iterator *iter TSRMLS_DC);
-static void rararch_it_fetch(rararch_iterator *it TSRMLS_DC);
-static int rararch_it_valid(zend_object_iterator *iter TSRMLS_DC);
+													 int by_ref TSRMLS_DC)
+{
+	rararch_iterator	*it;
+	rar_file_t			*rar;
+	int					res;
+
+	if (by_ref) {
+		php_error_docref(NULL TSRMLS_CC, E_ERROR,
+			"An iterator cannot be used with foreach by reference");
+	}
+
+	it = emalloc(sizeof *it);
+
 #if PHP_MAJOR_VERSION < 7
-static void rararch_it_current_data(zend_object_iterator *iter,
-									zval ***data TSRMLS_DC);
+	zval_add_ref(&object);
+	it->parent.data = object;
+	it->value = NULL;
 #else
-static zval *rararch_it_current_data(zend_object_iterator *iter);
+	zend_iterator_init((zend_object_iterator *) it);
+	ZVAL_COPY(&it->parent.data, object);
+	ZVAL_UNDEF(&it->value);
 #endif
-static void rararch_it_move_forward(zend_object_iterator *iter TSRMLS_DC);
-static void rararch_it_rewind(zend_object_iterator *iter TSRMLS_DC);
+
+#if PHP_VERSION_ID < 70300
+	it->parent.funcs = ce->iterator_funcs.funcs;
+#else
+	it->parent.funcs = &rararch_it_funcs;
+#endif
+	it->state = NULL;
+
+	res = _rar_get_file_resource_ex(object, &rar, 1 TSRMLS_CC);
+	if (res == FAILURE)
+		php_error_docref(NULL TSRMLS_CC, E_ERROR,
+			"Cannot fetch RarArchive object");
+	if (rar->arch_handle == NULL)
+		php_error_docref(NULL TSRMLS_CC, E_ERROR,
+			"The archive is already closed, cannot give an iterator");
+	res = _rar_list_files(rar TSRMLS_CC);
+	if (_rar_handle_error(res TSRMLS_CC) == FAILURE) {
+		/* if it failed, do not expose the possibly incomplete entry list */
+		it->empty_iterator = 1;
+	}
+	else
+		it->empty_iterator = 0;
+
+	_rar_entry_search_start(rar, RAR_SEARCH_TRAVERSE, &it->state TSRMLS_CC);
+	return (zend_object_iterator*) it;
+}
 /* }}} */
 
 /* {{{ rararch_it_invalidate_current */
@@ -1083,71 +1150,6 @@ static void rararch_it_rewind(zend_object_iterator *iter TSRMLS_DC)
 	rararch_it_invalidate_current((zend_object_iterator *) it TSRMLS_CC);
 	_rar_entry_search_rewind(it->state);
 	rararch_it_fetch(it TSRMLS_CC);
-}
-/* }}} */
-
-/* iterator handler table */
-static zend_object_iterator_funcs rararch_it_funcs = {
-	rararch_it_dtor,
-	rararch_it_valid,
-	rararch_it_current_data,
-	NULL,
-	rararch_it_move_forward,
-	rararch_it_rewind,
-	rararch_it_invalidate_current
-};
-/* }}} */
-
-/* {{{ rararch_it_get_iterator */
-static zend_object_iterator *rararch_it_get_iterator(zend_class_entry *ce,
-													 zval *object,
-													 int by_ref TSRMLS_DC)
-{
-	rararch_iterator	*it;
-	rar_file_t			*rar;
-	int					res;
-
-	if (by_ref) {
-		php_error_docref(NULL TSRMLS_CC, E_ERROR,
-			"An iterator cannot be used with foreach by reference");
-	}
-
-	it = emalloc(sizeof *it);
-
-#if PHP_MAJOR_VERSION < 7
-	zval_add_ref(&object);
-	it->parent.data = object;
-	it->value = NULL;
-#else
-	zend_iterator_init((zend_object_iterator *) it);
-	ZVAL_COPY(&it->parent.data, object);
-	ZVAL_UNDEF(&it->value);
-#endif
-
-#if PHP_VERSION_ID < 70300
-	it->parent.funcs = ce->iterator_funcs.funcs;
-#else
-	it->parent.funcs = &rararch_it_funcs;
-#endif
-	it->state = NULL;
-
-	res = _rar_get_file_resource_ex(object, &rar, 1 TSRMLS_CC);
-	if (res == FAILURE)
-		php_error_docref(NULL TSRMLS_CC, E_ERROR,
-			"Cannot fetch RarArchive object");
-	if (rar->arch_handle == NULL)
-		php_error_docref(NULL TSRMLS_CC, E_ERROR,
-			"The archive is already closed, cannot give an iterator");
-	res = _rar_list_files(rar TSRMLS_CC);
-	if (_rar_handle_error(res TSRMLS_CC) == FAILURE) {
-		/* if it failed, do not expose the possibly incomplete entry list */
-		it->empty_iterator = 1;
-	}
-	else
-		it->empty_iterator = 0;
-
-	_rar_entry_search_start(rar, RAR_SEARCH_TRAVERSE, &it->state TSRMLS_CC);
-	return (zend_object_iterator*) it;
 }
 /* }}} */
 

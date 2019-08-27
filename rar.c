@@ -591,6 +591,9 @@ static int _rar_make_userdata_fcall(zval *callable,
 /* }}} */
 
 #ifdef COMPILE_DL_RAR
+#ifdef ZTS
+ZEND_TSRMLS_CACHE_DEFINE();
+#endif
 ZEND_GET_MODULE(rar)
 #endif
 
@@ -716,6 +719,9 @@ static zval *_rar_contents_cache_get(const char *key,
  * ZEND_INIT_MODULE_GLOBALS, it cannot (per the spec) be used. */
 static void ZEND_MODULE_GLOBALS_CTOR_N(rar)(void *arg TSRMLS_DC) /* {{{ */
 {
+#if defined(COMPILE_DL_RAR) && defined(ZTS) && PHP_MAJOR_VERSION > 5
+	ZEND_TSRMLS_CACHE_UPDATE();
+#endif
 	zend_rar_globals *rar_globals = arg;
 	rar_globals->contents_cache.max_size = 5; /* TODO make configurable */
 	rar_globals->contents_cache.hits = 0;
